@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>:root{color-scheme:light dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Kunze</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky top bar with four portal tabs; main column holds event "ticket" cards, a detail page with sticky checkout, and dashboards for organizers and sponsors. */
+:root{
+  --bg:#EDF1EC; --surface:#FAFCF9; --ink:#12201A; --muted:#56675F; --line:#D2DBD3;
+  --brand:#0C6A4D; --brand-ink:#FFFFFF; --gold:#E3A400; --danger:#C0392B; --ok:#1B8A4C; --warn:#B26B00;
+  --soft:#E1E9E2;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --body:'DM Sans','Segoe UI',system-ui,sans-serif;
+  --mono:'DM Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1511; --surface:#15201A; --ink:#E8EFEA; --muted:#97A99F; --line:#26352D; --brand:#3FC08E; --brand-ink:#05140D; --gold:#F0B72A; --danger:#F0705F; --ok:#4BC580; --warn:#E8A33A; --soft:#1C2A23; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1511; --surface:#15201A; --ink:#E8EFEA; --muted:#97A99F; --line:#26352D; --brand:#3FC08E; --brand-ink:#05140D; --gold:#F0B72A; --danger:#F0705F; --ok:#4BC580; --warn:#E8A33A; --soft:#1C2A23; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding-inline:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--display);line-height:1.1;margin:0;text-wrap:balance}
+p{margin:0}
+.wrap{max-width:1040px;margin-inline:auto}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin-inline:-16px;padding:10px 16px}
+.bar .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 20px}
+.logo{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;display:flex;align-items:baseline;gap:8px}
+.logo i{width:10px;height:10px;border-radius:50%;background:var(--gold);display:inline-block}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{background:none;border:0;padding:8px 12px;border-radius:8px;font-weight:600;color:var(--muted);cursor:pointer}
+.tab:hover{background:var(--soft);color:var(--ink)}
+.tab[aria-current="page"]{background:var(--brand);color:var(--brand-ink)}
+.note{font-size:12.5px;color:var(--muted);padding-block:10px;border-bottom:1px dashed var(--line)}
+main{padding-block:24px 64px;min-height:70vh}
+
+/* controls */
+.btn{background:var(--brand);color:var(--brand-ink);border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.btn.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.alt:hover{background:var(--soft)}
+.btn.danger{background:var(--danger);color:#fff}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+input,select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:80px}
+.row{display:grid;gap:12px}
+.row.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.row.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.row.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:640px){.row.c2,.row.c3,.row.c4{grid-template-columns:1fr}}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 12px;font-size:13px;font-weight:500;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.msg{font-size:13px}
+.msg.err{color:var(--danger)} .msg.ok{color:var(--ok)}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+
+/* events list */
+.lead{display:flex;flex-direction:column;gap:14px;margin-bottom:22px}
+.lead h1{font-size:clamp(30px,6vw,52px);font-weight:800;letter-spacing:-.025em;max-width:16ch}
+.lead p{color:var(--muted);max-width:52ch}
+.filters{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
+@media (max-width:560px){.filters{grid-template-columns:1fr}}
+.list{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,440px),1fr))}
+.ev{position:relative;display:grid;grid-template-columns:112px minmax(0,1fr) 74px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0;cursor:pointer;overflow:hidden;width:100%}
+.ev:hover{border-color:var(--brand)}
+.poster{--h:160;background:repeating-radial-gradient(circle at 85% 15%,transparent 0 13px,hsl(var(--h) 80% 70% / .28) 13px 15px),linear-gradient(140deg,hsl(var(--h) 62% 36%),hsl(calc(var(--h) + 45) 70% 20%));color:#fff;display:flex;align-items:flex-end;padding:10px;min-height:128px}
+.poster span{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.9}
+.ev-body{padding:14px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.ev-body h3{font-size:19px;font-weight:700}
+.meta{color:var(--muted);font-size:13.5px}
+.price{font-size:13.5px;font-weight:600;margin-top:auto}
+.spons{font-size:12px;color:var(--warn);font-weight:600}
+.stub{border-left:2px dashed var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;position:relative;background:var(--soft)}
+.stub b{font-family:var(--display);font-size:28px;font-weight:800;line-height:1}
+.stub span{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.stub::before,.stub::after{content:"";position:absolute;left:-8px;width:14px;height:14px;border-radius:50%;background:var(--bg);border:1px solid var(--line)}
+.stub::before{top:-8px}.stub::after{bottom:-8px}
+.sold{position:absolute;top:8px;left:8px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px}
+@media (max-width:420px){.ev{grid-template-columns:84px minmax(0,1fr) 60px}}
+
+/* detail */
+.back{margin-bottom:14px}
+.banner{--h:160;border-radius:12px;padding:26px 22px;color:#fff;background:repeating-radial-gradient(circle at 90% 0%,transparent 0 22px,hsl(var(--h) 80% 70% / .25) 22px 25px),linear-gradient(140deg,hsl(var(--h) 62% 34%),hsl(calc(var(--h) + 45) 70% 18%));display:flex;flex-direction:column;gap:8px}
+.banner h1{font-size:clamp(28px,5vw,44px);font-weight:800;letter-spacing:-.02em}
+.banner .meta{color:rgba(255,255,255,.85)}
+.cols{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;margin-top:20px;align-items:start}
+@media (max-width:820px){.cols{grid-template-columns:1fr}}
+.sticky{position:sticky;top:calc(env(safe-area-inset-top,0px) + 74px)}
+@media (max-width:820px){.sticky{position:static}}
+.tier{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:14px 0;border-top:1px solid var(--line);align-items:center}
+.tier:first-of-type{border-top:0}
+.tier h3{font-size:17px}
+.step{display:flex;align-items:center;gap:10px}
+.step button{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:18px;line-height:1}
+.step button:hover{background:var(--soft)}
+.step output{min-width:22px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.sum{display:flex;flex-direction:column;gap:6px;margin-block:14px;font-variant-numeric:tabular-nums}
+.sum div{display:flex;justify-content:space-between;gap:12px}
+.sum .tot{font-weight:700;font-size:18px;border-top:1px solid var(--line);padding-top:8px}
+.codeRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.pending{text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;padding-block:8px}
+.spin{width:38px;height:38px;border-radius:50%;border:4px solid var(--soft);border-top-color:var(--brand);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+.eco{display:inline-block;background:var(--gold);color:#1b1400;font-weight:700;font-size:11px;padding:2px 7px;border-radius:5px;letter-spacing:.04em}
+
+/* tickets */
+.tk{display:grid;grid-template-columns:minmax(0,1fr) 136px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tk .l{padding:16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.tk h3{font-size:19px}
+.tk .r{border-left:2px dashed var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px;background:var(--soft)}
+.qr{background:#fff;padding:6px;border-radius:6px;width:124px;height:124px;display:flex;align-items:center;justify-content:center}
+.qr img,.qr canvas{max-width:100%}
+.tk.used{opacity:.6}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:99px;padding:2px 9px;background:var(--soft);color:var(--muted)}
+.pill.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.pill.bad{background:color-mix(in srgb,var(--danger) 18%,transparent);color:var(--danger)}
+.grid2{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr))}
+@media (max-width:420px){.tk{grid-template-columns:minmax(0,1fr) 100px}.qr{width:88px;height:88px}}
+
+/* dashboards */
+.sub{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.sub button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px;font-weight:600;color:var(--muted);cursor:pointer}
+.sub button[aria-current="true"]{color:var(--ink);border-color:var(--brand)}
+.stats{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:18px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.stat small{display:block;color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.stat b{font-family:var(--display);font-size:26px;font-variant-numeric:tabular-nums}
+.bars{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.bar-row{display:grid;grid-template-columns:110px minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:13.5px}
+.track{height:10px;background:var(--soft);border-radius:99px;overflow:hidden}
+.fill{height:100%;background:var(--brand);border-radius:99px}
+.bar-row span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column;gap:14px}
+.gate{padding:18px;border-radius:12px;font-weight:600;display:flex;flex-direction:column;gap:2px}
+.gate.ok{background:color-mix(in srgb,var(--ok) 20%,transparent);color:var(--ok)}
+.gate.used{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.gate.bad{background:color-mix(in srgb,var(--danger) 18%,transparent);color:var(--danger)}
+.gate strong{font-family:var(--display);font-size:22px}
+.codes{display:flex;flex-wrap:wrap;gap:6px;max-height:150px;overflow:auto}
+.codes button{font-family:var(--mono);font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.codes button.u{text-decoration:line-through;color:var(--muted)}
+.bigcode{font-family:var(--mono);font-size:28px;font-weight:500;letter-spacing:.08em}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:99px;font-weight:600;font-size:14px;z-index:9;max-width:92vw}
+.empty{text-align:center;padding:40px 16px;color:var(--muted);display:flex;flex-direction:column;gap:12px;align-items:center}
+.scroll{overflow-x:auto}
+</style>
+
+</head>
+<body>
+<div class="bar"><div class="wrap">
+  <div class="logo">Kunze<i></i></div>
+  <nav class="tabs" id="nav" aria-label="Portals">
+    <button class="tab" data-act="nav" data-v="events">Find events</button>
+    <button class="tab" data-act="nav" data-v="tickets">My tickets</button>
+    <button class="tab" data-act="nav" data-v="org">Organizer</button>
+    <button class="tab" data-act="nav" data-v="spons">Sponsors</button>
+  </nav>
+</div></div>
+<div class="wrap">
+  <p class="note">Prototype with sample events. Payments are simulated here. Live <span class="eco">EcoCash</span> is connected through Paynow once you have a merchant account.</p>
+  <main id="main"></main>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function(){
+var FEE=0.05, KEY='kunze-proto-v1';
+var CITIES=['Harare','Bulawayo','Gweru','Mutare','Masvingo','Victoria Falls','Kwekwe','Kariba','Chinhoyi'];
+var CATS=['Music','Sports','Faith','Comedy','Arts','Business'];
+var $=function(s){return document.querySelector(s)};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var money=function(n){return '$'+(Math.round(n*100)/100).toFixed(2)};
+var uid=function(p){return p+Math.random().toString(36).slice(2,8)};
+var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function genCode(){var s='KZ-';for(var i=0;i<8;i++){if(i==4)s+='-';s+=ALPHA[Math.floor(Math.random()*ALPHA.length)]}return s}
+function fmtDate(d){return new Date(d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})+', '+new Date(d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+function dayParts(d){var x=new Date(d);return {d:x.getDate(),m:x.toLocaleDateString('en-GB',{month:'short'})}}
+
+/* ---------- data ---------- */
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function seed(){
+  var ev=[
+    {id:'e1',title:'Jacaranda Sessions',city:'Harare',venue:'Harare Gardens',date:'2026-11-07T17:00',cat:'Music',hue:160,org:'Sample Organizer',desc:'An open-air evening of live bands and DJs under the jacarandas. Gates open at 5pm, food stalls and a kids area until 7pm.',tiers:[['General',8,300,140],['VIP',25,60,38],['Table of 6',120,10,6]]},
+    {id:'e2',title:'Victoria Falls Sunrise 10K',city:'Victoria Falls',venue:'Zambezi Drive start line',date:'2026-11-14T05:30',cat:'Sports',hue:30,org:'Sample Organizer',desc:'A 10K road run starting at first light, with a 3K fun walk. Chip timing, water points and finisher medals.',tiers:[['Runner',15,400,212],['Family of 4',50,50,19]]},
+    {id:'e3',title:'Gweru Gospel Night',city:'Gweru',venue:'Midlands Arena',date:'2026-11-21T15:00',cat:'Faith',hue:275,org:'Sample Organizer',desc:'Choirs and praise teams from across the Midlands. Doors open at 2pm. Children under 5 enter free.',tiers:[['Standard',3,800,433],['Front row',10,100,71]]},
+    {id:'e4',title:'Bulawayo Comedy Cellar',city:'Bulawayo',venue:'The Cellar, city centre',date:'2026-12-05T19:30',cat:'Comedy',hue:340,org:'Sample Organizer',desc:'Five comedians, one microphone and a very small room. Ages 18 and over.',tiers:[['Standing',10,150,98],['Reserved',20,30,30]]},
+    {id:'e5',title:'Highlands Music Fest',city:'Mutare',venue:'Sakubva Stadium grounds',date:'2026-12-19T12:00',cat:'Music',hue:200,org:'Sample Organizer',desc:'Two stages, local and regional acts, camping nearby. Early Bird sells out first.',tiers:[['Early Bird',12,200,171],['Weekend',30,500,126],['VIP',80,80,22]]}
+  ].map(function(e){e.tiers=e.tiers.map(function(t,i){return {id:e.id+'t'+i,name:t[0],price:t[1],qty:t[2],sold:0,seedSold:t[3]}});return e});
+  var sponsors=[
+    {id:'s1',name:'Mbare Fresh Bakery',code:'MBARE10',discount:10,eventId:'all',pack:'Starter'},
+    {id:'s2',name:'Kopje Coffee Roasters',code:'KOPJE15',discount:15,eventId:'e1',pack:'Featured'},
+    {id:'s3',name:'Great Dyke Motors',code:'GDM5',discount:5,eventId:'all',pack:'Headline'}
+  ];
+  var r=rng(7),names=['Tendai M.','Rudo C.','Farai N.','Chipo D.','Tatenda K.','Nyasha P.','Blessing T.','Kudzai S.','Tapiwa Z.','Ruvimbo H.'];
+  var tickets=[],orders=[];
+  ev.forEach(function(e){e.tiers.forEach(function(t){
+    var left=t.seedSold;
+    while(left>0){
+      var q=Math.min(left,1+Math.floor(r()*4)),sp=null;
+      if(r()<.35){var c=sponsors.filter(function(s){return s.eventId==='all'||s.eventId===e.id});sp=c[Math.floor(r()*c.length)]}
+      var sub=q*t.price,disc=sp?sub*sp.discount/100:0,oid=uid('o'),b=names[Math.floor(r()*names.length)];
+      orders.push({id:oid,eventId:e.id,items:[{tierId:t.id,name:t.name,qty:q,price:t.price}],subtotal:sub,discount:disc,fee:(sub-disc)*FEE,total:(sub-disc)*(1+FEE),sponsorId:sp?sp.id:null,status:'paid',buyer:b,phone:'0771 000 000',ts:Date.now()-Math.floor(r()*9e8)});
+      for(var i=0;i<q;i++)tickets.push({code:genCode(),eventId:e.id,tierId:t.id,tierName:t.name,holder:b,orderId:oid,price:t.price,used:false,usedAt:null});
+      t.sold+=q;left-=q;
+    }
+    delete t.seedSold;
+  })});
+  return {events:ev,sponsors:sponsors,tickets:tickets,orders:orders,mine:[]};
+}
+var D;
+try{var raw=localStorage.getItem(KEY);D=raw?JSON.parse(raw):null}catch(e){D=null}
+if(!D||!D.events)D=seed();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}
+function getEv(id){return D.events.filter(function(e){return e.id===id})[0]}
+function getSp(id){return D.sponsors.filter(function(s){return s.id===id})[0]}
+
+var S={view:'events',q:'',city:'All',cat:'All',open:null,co:null,orgTab:'dash',gateEv:null,gateRes:null,spId:'s1',timer:null};
+var tab=null;
+
+/* ---------- helpers ---------- */
+function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true},2600)}
+function evSold(e){return e.tiers.reduce(function(a,t){return a+t.sold},0)}
+function evCap(e){return e.tiers.reduce(function(a,t){return a+t.qty},0)}
+function minPrice(e){return Math.min.apply(null,e.tiers.map(function(t){return t.price}))}
+function sponsorsFor(e){return D.sponsors.filter(function(s){return (s.pack!=='Starter')&&(s.eventId==='all'||s.eventId===e.id)})}
+function copy(text){try{navigator.clipboard.writeText(text).then(function(){toast('Copied '+text)},function(){toast(text)})}catch(e){toast(text)}}
+
+/* ---------- events list ---------- */
+function filtered(){
+  var q=S.q.toLowerCase();
+  return D.events.filter(function(e){
+    return (S.city==='All'||e.city===S.city)&&(S.cat==='All'||e.cat===S.cat)&&(!q||(e.title+' '+e.venue+' '+e.city).toLowerCase().indexOf(q)>=0);
+  }).sort(function(a,b){return new Date(a.date)-new Date(b.date)});
+}
+function cardHtml(e){
+  var dp=dayParts(e.date),left=evCap(e)-evSold(e),sp=sponsorsFor(e)[0];
+  return '<button class="ev" data-act="open" data-id="'+e.id+'" aria-label="'+esc(e.title)+', '+esc(e.city)+'">'
+   +'<span class="poster" style="--h:'+e.hue+'"><span>'+esc(e.cat)+'</span></span>'
+   +(left<=0?'<span class="sold">Sold out</span>':'')
+   +'<span class="ev-body"><h3>'+esc(e.title)+'</h3><span class="meta">'+esc(e.venue)+', '+esc(e.city)+'</span>'
+   +(sp?'<span class="spons">Sponsored by '+esc(sp.name)+'</span>':'')
+   +'<span class="price">From '+money(minPrice(e))+' · '+(left>0?left+' left':'No tickets left')+'</span></span>'
+   +'<span class="stub"><b>'+dp.d+'</b><span>'+dp.m+'</span></span></button>';
+}
+function listHtml(){
+  var l=filtered();
+  return l.length?l.map(cardHtml).join(''):'<div class="empty" style="grid-column:1/-1"><p>No events match those filters.</p></div>';
+}
+function viewEvents(){
+  if(S.open)return viewDetail();
+  var cities=['All'].concat(CITIES);
+  return '<div class="lead"><h1>Tickets for every night out in Zimbabwe</h1><p>Browse concerts, runs, church events and comedy nights. Pay with EcoCash and get your QR ticket in seconds.</p></div>'
+   +'<div class="filters"><div class="field"><label for="q">Search</label><input id="q" type="search" placeholder="Event, venue or town" value="'+esc(S.q)+'"></div>'
+   +'<div class="field"><label for="city">Town</label><select id="city">'+cities.map(function(c){return '<option'+(c===S.city?' selected':'')+'>'+c+'</option>'}).join('')+'</select></div></div>'
+   +'<div class="chips" id="chips" style="margin-block:12px 18px">'+['All'].concat(CATS).map(function(c){return '<button class="chip" data-act="cat" data-c="'+c+'" aria-pressed="'+(S.cat===c)+'">'+c+'</button>'}).join('')+'</div>'
+   +'<div class="list" id="evlist">'+listHtml()+'</div>';
+}
+
+/* ---------- event detail + checkout ---------- */
+function calc(){
+  var c=S.co,e=getEv(c.eventId),items=[],sub=0;
+  e.tiers.forEach(function(t){var q=c.qty[t.id]||0;if(q>0){items.push({tierId:t.id,name:t.name,qty:q,price:t.price});sub+=q*t.price}});
+  var sp=c.sponsorId?getSp(c.sponsorId):null,disc=sp?sub*sp.discount/100:0,fee=(sub-disc)*FEE;
+  return {e:e,items:items,count:items.reduce(function(a,i){return a+i.qty},0),sub:sub,sp:sp,disc:disc,fee:fee,total:sub-disc+fee};
+}
+function viewDetail(){
+  var e=getEv(S.open),sp=sponsorsFor(e);
+  return '<button class="btn alt sm back" data-act="back">← All events</button>'
+   +'<div class="banner" style="--h:'+e.hue+'"><span class="pill" style="align-self:flex-start;background:rgba(255,255,255,.18);color:#fff">'+esc(e.cat)+'</span><h1>'+esc(e.title)+'</h1><p class="meta">'+fmtDate(e.date)+'</p><p class="meta">'+esc(e.venue)+', '+esc(e.city)+'</p>'
+   +(sp.length?'<p class="meta">Sponsored by '+sp.map(function(s){return esc(s.name)}).join(', ')+'. Use their code at checkout for a discount.</p>':'')+'</div>'
+   +'<div class="cols"><div class="stack"><div class="panel"><h2 style="font-size:20px;margin-bottom:6px">About this event</h2><p class="muted">'+esc(e.desc)+'</p></div>'
+   +'<div class="panel" id="tiers"></div></div>'
+   +'<div class="panel sticky" id="copanel"></div></div>';
+}
+function tiersHtml(){
+  var e=getEv(S.open);
+  return '<h2 style="font-size:20px;margin-bottom:4px">Choose tickets</h2>'+e.tiers.map(function(t){
+    var left=t.qty-t.sold,q=S.co.qty[t.id]||0;
+    return '<div class="tier"><div><h3>'+esc(t.name)+'</h3><span class="meta">'+money(t.price)+' · '+(left>0?left+' left':'Sold out')+'</span></div>'
+     +'<div class="step"><button data-act="step" data-t="'+t.id+'" data-d="-1" aria-label="Fewer '+esc(t.name)+'"'+(q<1?' disabled':'')+'>−</button><output>'+q+'</output><button data-act="step" data-t="'+t.id+'" data-d="1" aria-label="More '+esc(t.name)+'"'+(q>=left||q>=10?' disabled':'')+'>+</button></div></div>';
+  }).join('');
+}
+function summaryHtml(c){
+  return '<div class="sum">'
+   +c.items.map(function(i){return '<div><span>'+i.qty+' × '+esc(i.name)+'</span><span>'+money(i.qty*i.price)+'</span></div>'}).join('')
+   +(c.items.length?'':'<div class="muted"><span>No tickets selected yet</span><span></span></div>')
+   +(c.sp?'<div style="color:var(--ok)"><span>'+esc(c.sp.name)+' discount ('+c.sp.discount+'%)</span><span>−'+money(c.disc)+'</span></div>':'')
+   +'<div><span>Booking fee (5%)</span><span>'+money(c.fee)+'</span></div>'
+   +'<div class="tot"><span>Total (USD)</span><span>'+money(c.total)+'</span></div></div>';
+}
+function panelHtml(){
+  var co=S.co,c=calc();
+  if(co.step==='pending'){
+    return '<div class="pending"><div class="spin" role="status" aria-label="Waiting for payment"></div><h2 style="font-size:20px">Check your phone</h2>'
+     +'<p class="muted">An <span class="eco">EcoCash</span> request for <b>'+money(co.paid)+'</b> was sent to <b class="mono">'+esc(co.phone)+'</b>. Enter your PIN to approve.</p>'
+     +'<p class="meta">Your tickets are held for <b id="cd" class="mono">10:00</b></p>'
+     +'<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn" data-act="approve">Demo: approve payment</button><button class="btn alt" data-act="decline">Demo: decline</button></div>'
+     +'<p class="meta">In the live version, Paynow confirms the payment to Kunze automatically.</p></div>';
+  }
+  if(co.step==='done'){
+    var o=co.order,ts=D.tickets.filter(function(t){return t.orderId===o.id});
+    return '<h2 style="font-size:20px;color:var(--ok)">Payment received</h2><p class="muted" style="margin-block:6px 14px">Your '+ts.length+' ticket'+(ts.length>1?'s are':' is')+' ready. Show the QR code at the gate.</p>'
+     +'<div class="stack">'+ts.map(ticketHtml).join('')+'</div><div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn" data-act="nav" data-v="tickets">Open My tickets</button><button class="btn alt" data-act="back">Back to events</button></div>';
+  }
+  if(co.step==='failed'){
+    return '<h2 style="font-size:20px;color:var(--danger)">Payment not completed</h2><p class="muted" style="margin-block:6px 14px">'+esc(co.err)+' Your tickets were released. You have not been charged.</p><button class="btn" data-act="retry">Try again</button>';
+  }
+  return '<h2 style="font-size:20px;margin-bottom:12px">Your details</h2><div class="stack" style="gap:12px">'
+   +'<div class="field"><label for="f-name">Full name</label><input id="f-name" data-f="name" autocomplete="name" value="'+esc(co.name)+'"></div>'
+   +'<div class="field"><label for="f-phone">EcoCash number</label><input id="f-phone" data-f="phone" inputmode="tel" autocomplete="tel" placeholder="0771 234 567" value="'+esc(co.phone)+'"></div>'
+   +'<div class="field"><label for="f-code">Sponsor code (optional)</label><div class="codeRow"><input id="f-code" data-f="code" placeholder="e.g. MBARE10" value="'+esc(co.code)+'" style="text-transform:uppercase"><button class="btn alt" data-act="apply">Apply</button></div>'
+   +(co.codeMsg?'<span class="msg '+(co.sponsorId?'ok':'err')+'">'+esc(co.codeMsg)+'</span>':'')+'</div></div>'
+   +'<div id="sum">'+summaryHtml(c)+'</div>'
+   +(co.err?'<p class="msg err" style="margin-bottom:10px">'+esc(co.err)+'</p>':'')
+   +'<button class="btn" style="width:100%" data-act="pay"'+(c.count?'':' disabled')+'>Pay '+money(c.total)+' with EcoCash</button>';
+}
+function ticketHtml(t){
+  var e=getEv(t.eventId)||{title:'Event',venue:'',city:'',date:Date.now()};
+  return '<div class="tk'+(t.used?' used':'')+'"><div class="l"><span class="pill'+(t.used?' bad':' ok')+'" style="align-self:flex-start">'+(t.used?'Used':'Valid')+'</span><h3>'+esc(e.title)+'</h3>'
+   +'<span class="meta">'+fmtDate(e.date)+'</span><span class="meta">'+esc(e.venue)+', '+esc(e.city)+'</span><span class="meta"><b>'+esc(t.tierName)+'</b> · '+esc(t.holder)+'</span></div>'
+   +'<div class="r"><div class="qr" data-qr="'+esc(t.code)+'"></div><span class="mono" style="font-size:11px">'+esc(t.code)+'</span></div></div>';
+}
+function openEvent(id){
+  S.open=id;S.co={eventId:id,qty:{},name:'',phone:'',code:'',codeMsg:'',sponsorId:null,step:'form',err:'',order:null,paid:0};
+  render();
+}
+function renderDetailParts(){
+  var a=$('#tiers'),b=$('#copanel');if(a)a.innerHTML=tiersHtml();if(b)b.innerHTML=panelHtml();postRender();
+}
+function clearTimer(){if(S.timer){clearInterval(S.timer);S.timer=null}}
+function startPay(){
+  var co=S.co,c=calc(),phone=co.phone.replace(/[\s-]/g,'');
+  co.err='';
+  if(!c.count){co.err='Choose at least one ticket.'}
+  else if(co.name.trim().length<2){co.err='Enter your full name.'}
+  else if(!/^(\+?263|0)7[78]\d{7}$/.test(phone)){co.err='Enter a valid EcoCash number, for example 0771 234 567.'}
+  else{
+    var bad=c.items.filter(function(i){var t=c.e.tiers.filter(function(x){return x.id===i.tierId})[0];return i.qty>t.qty-t.sold})[0];
+    if(bad)co.err='Not enough '+bad.name+' tickets left. Lower the quantity.';
+  }
+  if(co.err){var p=$('#copanel');p.innerHTML=panelHtml();return}
+  c.items.forEach(function(i){c.e.tiers.filter(function(t){return t.id===i.tierId})[0].sold+=i.qty});
+  co.order={id:uid('o'),eventId:c.e.id,items:c.items,subtotal:c.sub,discount:c.disc,fee:c.fee,total:c.total,sponsorId:c.sp?c.sp.id:null,status:'pending',buyer:co.name.trim(),phone:co.phone,ts:Date.now()};
+  co.paid=c.total;co.step='pending';co.left=600;save();
+  renderDetailParts();
+  clearTimer();
+  S.timer=setInterval(function(){
+    co.left--;var el=$('#cd');
+    if(el)el.textContent=Math.floor(co.left/60)+':'+('0'+co.left%60).slice(-2);
+    if(co.left<=0)failPay('The payment request timed out.');
+  },1000);
+}
+function releaseHold(){
+  var o=S.co.order;if(!o)return;
+  o.items.forEach(function(i){var e=getEv(o.eventId);e.tiers.filter(function(t){return t.id===i.tierId})[0].sold-=i.qty});
+}
+function failPay(msg){clearTimer();releaseHold();S.co.order=null;S.co.step='failed';S.co.err=msg;save();renderDetailParts()}
+function approvePay(){
+  clearTimer();var co=S.co,o=co.order;o.status='paid';D.orders.push(o);
+  o.items.forEach(function(i){for(var k=0;k<i.qty;k++){var t={code:genCode(),eventId:o.eventId,tierId:i.tierId,tierName:i.name,holder:o.buyer,orderId:o.id,price:i.price,used:false,usedAt:null};D.tickets.push(t)}});
+  co.step='done';save();renderDetailParts();toast('Payment received. Tickets issued.');
+}
+
+/* ---------- my tickets ---------- */
+function viewTickets(){
+  var mine=D.orders.filter(function(o){return o.ts>Date.now()-1000*60*60*24*0&&false});
+  var ids={};D.mine.forEach(function(id){ids[id]=1});
+  var ts=D.tickets.filter(function(t){return ids[t.orderId]});
+  if(!ts.length)return '<div class="empty"><h2>No tickets yet</h2><p>Tickets you buy on this device show up here, each with its own QR code.</p><button class="btn" data-act="nav" data-v="events">Find an event</button></div>';
+  return '<h1 style="font-size:32px;margin-bottom:16px">My tickets</h1><div class="grid2">'+ts.map(ticketHtml).join('')+'</div>';
+}
+
+/* ---------- organizer ---------- */
+function viewOrg(){
+  var tabs=[['dash','Sales'],['new','Add an event'],['gate','Gate check-in']];
+  return '<h1 style="font-size:32px;margin-bottom:4px">Organizer portal</h1><p class="muted" style="margin-bottom:16px">Create events, watch sales and check people in at the gate.</p>'
+   +'<div class="sub">'+tabs.map(function(t){return '<button data-act="orgtab" data-t="'+t[0]+'" aria-current="'+(S.orgTab===t[0])+'">'+t[1]+'</button>'}).join('')+'</div>'
+   +(S.orgTab==='dash'?orgDash():S.orgTab==='new'?orgNew():orgGate());
+}
+function orgDash(){
+  var paid=D.orders.filter(function(o){return o.status==='paid'});
+  var rev=paid.reduce(function(a,o){return a+o.subtotal-o.discount},0);
+  var sold=D.events.reduce(function(a,e){return a+evSold(e)},0);
+  var inn=D.tickets.filter(function(t){return t.used}).length;
+  var viaSp=paid.filter(function(o){return o.sponsorId}).reduce(function(a,o){return a+o.items.reduce(function(x,i){return x+i.qty},0)},0);
+  return '<div class="stats"><div class="stat"><small>Tickets sold</small><b>'+sold+'</b></div><div class="stat"><small>Ticket revenue</small><b>'+money(rev)+'</b></div><div class="stat"><small>Checked in</small><b>'+inn+'</b></div><div class="stat"><small>Sold via sponsors</small><b>'+viaSp+'</b></div></div>'
+   +'<div class="stack">'+D.events.map(function(e){
+     var er=paid.filter(function(o){return o.eventId===e.id}).reduce(function(a,o){return a+o.subtotal-o.discount},0);
+     return '<div class="panel"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><h3 style="font-size:19px">'+esc(e.title)+'</h3><span class="meta">'+esc(e.city)+' · '+fmtDate(e.date)+'</span></div><div style="text-align:right"><b style="font-size:20px;font-variant-numeric:tabular-nums">'+money(er)+'</b><br><span class="meta">'+evSold(e)+' of '+evCap(e)+' sold</span></div></div>'
+      +'<div class="bars">'+e.tiers.map(function(t){return '<div class="bar-row"><span>'+esc(t.name)+'</span><span class="track"><span class="fill" style="display:block;width:'+Math.min(100,t.sold/t.qty*100)+'%"></span></span><span>'+t.sold+' / '+t.qty+'</span></div>'}).join('')+'</div></div>';
+   }).join('')+'</div>';
+}
+function orgNew(){
+  var tr='';for(var i=0;i<3;i++)tr+='<div class="row c3"><div class="field"><label for="tn'+i+'">Ticket '+(i+1)+' name</label><input id="tn'+i+'" value="'+(['General','VIP',''][i])+'"></div><div class="field"><label for="tp'+i+'">Price (USD)</label><input id="tp'+i+'" type="number" min="0" step="0.5" value="'+(['5','20',''][i])+'"></div><div class="field"><label for="tq'+i+'">How many</label><input id="tq'+i+'" type="number" min="1" step="1" value="'+(['200','40',''][i])+'"></div></div>';
+  return '<form id="newEv" class="panel stack" novalidate><div class="row c2"><div class="field"><label for="n-title">Event name</label><input id="n-title" required></div><div class="field"><label for="n-date">Date and time</label><input id="n-date" type="datetime-local" required></div></div>'
+   +'<div class="row c3"><div class="field"><label for="n-city">Town</label><select id="n-city">'+CITIES.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div><div class="field"><label for="n-venue">Venue</label><input id="n-venue" required></div><div class="field"><label for="n-cat">Category</label><select id="n-cat">'+CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div></div>'
+   +'<div class="field"><label for="n-desc">Description</label><textarea id="n-desc"></textarea></div>'+tr
+   +'<p class="msg err" id="n-err" hidden></p><div><button class="btn" type="submit">Publish event</button></div></form>';
+}
+function orgGate(){
+  if(!S.gateEv)S.gateEv=D.events[0].id;
+  var e=getEv(S.gateEv),ts=D.tickets.filter(function(t){return t.eventId===e.id});
+  var inn=ts.filter(function(t){return t.used}).length,r=S.gateRes;
+  return '<div class="grid2" style="align-items:start"><div class="panel stack"><div class="field"><label for="g-ev">Event at this gate</label><select id="g-ev">'+D.events.map(function(x){return '<option value="'+x.id+'"'+(x.id===S.gateEv?' selected':'')+'>'+esc(x.title)+'</option>'}).join('')+'</select></div>'
+   +'<form id="gateForm" class="codeRow" novalidate><input id="gcode" class="mono" placeholder="KZ-XXXX-XXXX" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase"><button class="btn" type="submit">Check in</button></form>'
+   +(r?'<div class="gate '+r.k+'" role="status"><strong>'+esc(r.t)+'</strong><span>'+esc(r.s)+'</span></div>':'<p class="muted">Type or scan a ticket code. In the live version the phone camera scans the QR code directly.</p>')
+   +'<p class="meta"><b>'+inn+'</b> of '+ts.length+' tickets checked in</p></div>'
+   +'<div class="panel stack"><h3 style="font-size:17px">Tickets for this event</h3><p class="meta">Tap a code to fill it in for testing. Struck-through codes are already used.</p><div class="codes">'+ts.slice(0,60).map(function(t){return '<button class="'+(t.used?'u':'')+'" data-act="fill" data-c="'+esc(t.code)+'">'+esc(t.code)+'</button>'}).join('')+'</div></div></div>';
+}
+function checkIn(code){
+  code=code.trim().toUpperCase();
+  var t=D.tickets.filter(function(x){return x.code===code})[0],e=getEv(S.gateEv);
+  if(!code){S.gateRes={k:'bad',t:'Enter a code',s:'Type the code printed under the QR.'}}
+  else if(!t){S.gateRes={k:'bad',t:'Not valid',s:'No ticket with that code exists.'}}
+  else if(t.eventId!==S.gateEv){var o=getEv(t.eventId);S.gateRes={k:'bad',t:'Wrong event',s:'This ticket is for '+(o?o.title:'another event')+', not '+e.title+'.'}}
+  else if(t.used){S.gateRes={k:'used',t:'Already used',s:'Scanned at '+new Date(t.usedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'. Do not let them in again.'}}
+  else{t.used=true;t.usedAt=Date.now();save();S.gateRes={k:'ok',t:'Welcome in',s:t.tierName+' · '+t.holder}}
+  render();var g=$('#gcode');if(g)g.focus();
+}
+
+/* ---------- sponsors ---------- */
+var PACKS={Starter:{price:40,note:'Discount code only'},Featured:{price:120,note:'Code plus a "Sponsored by" line on the event'},Headline:{price:300,note:'Everything in Featured, shown first on the event page'}};
+function viewSpons(){
+  var sp=getSp(S.spId)||D.sponsors[0];if(sp)S.spId=sp.id;
+  var os=D.orders.filter(function(o){return o.status==='paid'&&o.sponsorId===sp.id});
+  var tix=os.reduce(function(a,o){return a+o.items.reduce(function(x,i){return x+i.qty},0)},0);
+  var given=os.reduce(function(a,o){return a+o.discount},0);
+  var sales=os.reduce(function(a,o){return a+o.subtotal-o.discount},0);
+  var ev=sp.eventId==='all'?'all events':(getEv(sp.eventId)||{title:'one event'}).title;
+  return '<h1 style="font-size:32px;margin-bottom:4px">Sponsor portal</h1><p class="muted" style="margin-bottom:16px">Pay to promote your business. Buyers who use your code get a discount, and you see every sale it drives.</p>'
+   +'<div class="grid2" style="align-items:start"><div class="stack"><div class="field"><label for="sp-sel">Viewing sponsor</label><select id="sp-sel">'+D.sponsors.map(function(s){return '<option value="'+s.id+'"'+(s.id===sp.id?' selected':'')+'>'+esc(s.name)+'</option>'}).join('')+'</select></div>'
+   +'<div class="panel stack"><div><span class="pill">'+esc(sp.pack)+' package</span></div><div class="bigcode">'+esc(sp.code)+'</div><p class="muted">Gives '+sp.discount+'% off tickets for '+esc(ev)+'.</p><div><button class="btn sm" data-act="copy" data-c="'+esc(sp.code)+'">Copy code</button></div></div>'
+   +'<div class="stats" style="margin:0"><div class="stat"><small>Orders</small><b>'+os.length+'</b></div><div class="stat"><small>Tickets</small><b>'+tix+'</b></div><div class="stat"><small>Sales driven</small><b>'+money(sales)+'</b></div><div class="stat"><small>Discounts given</small><b>'+money(given)+'</b></div></div></div>'
+   +'<form id="spForm" class="panel stack" novalidate><h3 style="font-size:19px">Become a sponsor</h3>'
+   +'<div class="field"><label for="s-name">Business name</label><input id="s-name"></div>'
+   +'<div class="row c2"><div class="field"><label for="s-disc">Discount for buyers (%)</label><input id="s-disc" type="number" min="1" max="50" value="10"></div><div class="field"><label for="s-ev">Applies to</label><select id="s-ev"><option value="all">All events</option>'+D.events.map(function(e){return '<option value="'+e.id+'">'+esc(e.title)+'</option>'}).join('')+'</select></div></div>'
+   +'<div class="field"><label for="s-pack">Package</label><select id="s-pack">'+Object.keys(PACKS).map(function(k){return '<option value="'+k+'">'+k+' · '+money(PACKS[k].price)+' · '+PACKS[k].note+'</option>'}).join('')+'</select></div>'
+   +'<p class="msg err" id="s-err" hidden></p><div><button class="btn" type="submit">Pay with EcoCash and activate</button></div><p class="meta">Demo: the payment is simulated and your code activates immediately.</p></form></div>';
+}
+
+/* ---------- render ---------- */
+function postRender(){
+  document.querySelectorAll('[data-qr]').forEach(function(el){
+    if(el.dataset.done)return;el.dataset.done=1;el.innerHTML='';
+    try{new QRCode(el,{text:el.dataset.qr,width:112,height:112,correctLevel:QRCode.CorrectLevel.M})}catch(e){el.textContent=el.dataset.qr}
+  });
+}
+function render(){
+  document.querySelectorAll('#nav .tab').forEach(function(b){b.setAttribute('aria-current',b.dataset.v===S.view?'page':'false')});
+  var m=$('#main');
+  m.innerHTML=S.view==='events'?viewEvents():S.view==='tickets'?viewTickets():S.view==='org'?viewOrg():viewSpons();
+  if(S.view==='events'&&S.open)renderDetailParts();else postRender();
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',function(ev){
+  var b=ev.target.closest('[data-act]');if(!b)return;
+  var a=b.dataset.act;
+  if(a==='nav'){if(S.view==='events'&&b.dataset.v!=='events'||S.open&&b.dataset.v==='events'){}
+    if(b.dataset.v==='tickets'&&S.co&&S.co.step==='done'){S.open=null;S.co=null}
+    S.view=b.dataset.v;if(S.view==='events'&&S.co&&S.co.step!=='pending'){}
+    render();window.scrollTo(0,0)}
+  else if(a==='open'){openEvent(b.dataset.id);window.scrollTo(0,0)}
+  else if(a==='back'){if(S.co&&S.co.step==='pending'){return}S.view='events';S.open=null;S.co=null;clearTimer();render();window.scrollTo(0,0)}
+  else if(a==='cat'){S.cat=b.dataset.c;document.querySelectorAll('#chips .chip').forEach(function(x){x.setAttribute('aria-pressed',x.dataset.c===S.cat)});$('#evlist').innerHTML=listHtml()}
+  else if(a==='step'){var t=b.dataset.t,q=(S.co.qty[t]||0)+parseInt(b.dataset.d,10);S.co.qty[t]=Math.max(0,q);S.co.err='';renderDetailParts()}
+  else if(a==='apply'){
+    var code=S.co.code.trim().toUpperCase(),sp=D.sponsors.filter(function(s){return s.code===code})[0];
+    if(!code){S.co.codeMsg='Enter a code first.';S.co.sponsorId=null}
+    else if(!sp||(sp.eventId!=='all'&&sp.eventId!==S.co.eventId)){S.co.codeMsg=sp?'That code is for a different event.':'That code was not found.';S.co.sponsorId=null}
+    else{S.co.sponsorId=sp.id;S.co.codeMsg=sp.name+' code applied: '+sp.discount+'% off.'}
+    renderDetailParts()}
+  else if(a==='pay')startPay();
+  else if(a==='approve')approvePay();
+  else if(a==='decline')failPay('The EcoCash request was declined.');
+  else if(a==='retry'){S.co.step='form';S.co.err='';renderDetailParts()}
+  else if(a==='orgtab'){S.orgTab=b.dataset.t;S.gateRes=null;render()}
+  else if(a==='fill'){var g=$('#gcode');g.value=b.dataset.c;g.focus()}
+  else if(a==='copy')copy(b.dataset.c);
+});
+document.addEventListener('input',function(ev){
+  var t=ev.target;
+  if(t.id==='q'){S.q=t.value;$('#evlist').innerHTML=listHtml()}
+  else if(t.dataset&&t.dataset.f&&S.co){S.co[t.dataset.f]=t.value}
+});
+document.addEventListener('change',function(ev){
+  var t=ev.target;
+  if(t.id==='city'){S.city=t.value;$('#evlist').innerHTML=listHtml()}
+  else if(t.id==='g-ev'){S.gateEv=t.value;S.gateRes=null;render()}
+  else if(t.id==='sp-sel'){S.spId=t.value;render()}
+});
+document.addEventListener('submit',function(ev){
+  ev.preventDefault();var f=ev.target;
+  if(f.id==='gateForm')checkIn($('#gcode').value);
+  else if(f.id==='newEv'){
+    var err=$('#n-err'),title=$('#n-title').value.trim(),date=$('#n-date').value,venue=$('#n-venue').value.trim(),tiers=[];
+    for(var i=0;i<3;i++){var n=$('#tn'+i).value.trim(),p=parseFloat($('#tp'+i).value),q=parseInt($('#tq'+i).value,10);if(n&&p>=0&&q>0)tiers.push({n:n,p:p,q:q})}
+    var msg=!title?'Give the event a name.':!date?'Pick a date and time.':!venue?'Enter the venue.':!tiers.length?'Add at least one ticket type with a price and quantity.':'';
+    if(msg){err.textContent=msg;err.hidden=false;return}
+    var id=uid('e');
+    D.events.push({id:id,title:title,city:$('#n-city').value,venue:venue,date:date,cat:$('#n-cat').value,hue:Math.floor(Math.random()*360),org:'You',desc:$('#n-desc').value.trim()||'Details coming soon.',tiers:tiers.map(function(t,i){return {id:id+'t'+i,name:t.n,price:t.p,qty:t.q,sold:0}})});
+    save();S.orgTab='dash';render();toast('Event published. It is now on Find events.');
+  }
+  else if(f.id==='spForm'){
+    var err2=$('#s-err'),name=$('#s-name').value.trim(),disc=parseInt($('#s-disc').value,10);
+    if(!name){err2.textContent='Enter your business name.';err2.hidden=false;return}
+    if(!(disc>=1&&disc<=50)){err2.textContent='Choose a discount between 1% and 50%.';err2.hidden=false;return}
+    var base=name.replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,6)||'KZ',code=base+disc;
+    while(D.sponsors.some(function(s){return s.code===code}))code=base+disc+Math.floor(Math.random()*10);
+    var s={id:uid('s'),name:name,code:code,discount:disc,eventId:$('#s-ev').value,pack:$('#s-pack').value};
+    D.sponsors.push(s);S.spId=s.id;save();render();toast('Sponsorship active. Your code is '+code);
+  }
+});
+/* remember tickets bought on this device */
+var _approve=approvePay;approvePay=function(){_approve();D.mine.push(S.co.order.id);save()};
+
+render();
+})();
+</script>
+</body>
+</html>
